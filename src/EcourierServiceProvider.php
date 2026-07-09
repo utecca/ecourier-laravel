@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Ecourier\Laravel;
 
-use Ecourier\Sdk\EcourierConnector;
+use Ecourier\EcourierConnector;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Route;
 use Spatie\LaravelPackageTools\Package;

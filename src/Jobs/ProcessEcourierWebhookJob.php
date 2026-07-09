@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Ecourier\Laravel\Jobs;
 
+use Ecourier\Data\Webhook\WebhookEvent;
 use Ecourier\Laravel\Events\EcourierWebhookReceived;
-use Ecourier\Sdk\Data\Webhook\WebhookEvent;
 use Spatie\WebhookClient\Jobs\ProcessWebhookJob;
 
 class ProcessEcourierWebhookJob extends ProcessWebhookJob

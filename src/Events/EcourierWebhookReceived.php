@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Ecourier\Laravel\Events;
 
-use Ecourier\Sdk\Data\Webhook\DocumentWebhook;
+use Ecourier\Data\Webhook\DocumentWebhook;
 use Spatie\WebhookClient\Models\WebhookCall;
 
 class EcourierWebhookReceived

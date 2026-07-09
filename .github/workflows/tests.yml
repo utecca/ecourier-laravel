@@ -36,7 +36,7 @@ jobs:
       - name: Install dependencies
         working-directory: ecourier-laravel
         run: |
-          composer config repositories.ecourier-sdk '{"type":"path","url":"../ecourier-php-sdk","options":{"versions":{"ecourier/sdk":"1.0.0"}}}'
+          composer config repositories.ecourier '{"type":"path","url":"../ecourier-php-sdk","options":{"versions":{"ecourier/ecourier":"1.0.0"}}}'
           composer require "laravel/framework:${{ matrix.laravel }}" --no-update
           composer update --prefer-dist --no-progress
 

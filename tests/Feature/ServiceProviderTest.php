@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
+use Ecourier\EcourierConnector;
 use Ecourier\Laravel\Jobs\ProcessEcourierWebhookJob;
-use Ecourier\Sdk\EcourierConnector;
 use Illuminate\Support\Facades\Route;
 use Spatie\WebhookClient\Models\WebhookCall;
 

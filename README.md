@@ -1,6 +1,6 @@
 # eCourier Laravel
 
-Laravel wrapper for `ecourier/sdk`.
+Laravel wrapper for `ecourier/ecourier`.
 
 ## Installation
 
@@ -12,7 +12,7 @@ php artisan vendor:publish --tag=ecourier-config
 ## Usage
 
 ```php
-use Ecourier\Sdk\EcourierConnector;
+use Ecourier\EcourierConnector;
 
 $document = app(EcourierConnector::class)->documents()->find('doc_01xyz');
 ```
@@ -38,7 +38,7 @@ Listen for parsed webhook events:
 use Ecourier\Laravel\Events\EcourierWebhookReceived;
 
 Event::listen(EcourierWebhookReceived::class, function (EcourierWebhookReceived $event) {
-    $event->webhook; // Ecourier\Sdk\Data\Webhook\DocumentWebhook
+    $event->webhook; // Ecourier\Data\Webhook\DocumentWebhook
     $event->webhookCall; // Spatie webhook call model
 });
 ```
