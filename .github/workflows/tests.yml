@@ -1,0 +1,45 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        php: [8.4]
+        laravel: [12.*, 13.*]
+
+    name: PHP ${{ matrix.php }} / Laravel ${{ matrix.laravel }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ecourier-laravel
+
+      - uses: actions/checkout@v4
+        with:
+          repository: utecca/ecourier-php-sdk
+          path: ecourier-php-sdk
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Install dependencies
+        working-directory: ecourier-laravel
+        run: |
+          composer config repositories.ecourier-sdk '{"type":"path","url":"../ecourier-php-sdk","options":{"versions":{"ecourier/sdk":"1.0.0"}}}'
+          composer require "laravel/framework:${{ matrix.laravel }}" --no-update
+          composer update --prefer-dist --no-progress
+
+      - name: Run tests
+        working-directory: ecourier-laravel
+        run: vendor/bin/pest
