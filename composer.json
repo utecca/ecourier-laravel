@@ -1,5 +1,5 @@
 {
-    "name": "utecca/ecourier-laravel",
+    "name": "ecourier/ecourier-laravel",
     "description": "Laravel wrapper for the eCourier PHP SDK.",
     "type": "library",
     "license": "MIT",

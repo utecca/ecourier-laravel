@@ -5,7 +5,7 @@ Laravel wrapper for `ecourier/ecourier`.
 ## Installation
 
 ```bash
-composer require utecca/ecourier-laravel
+composer require ecourier/ecourier-laravel
 php artisan vendor:publish --tag=ecourier-config
 ```
 
