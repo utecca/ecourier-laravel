@@ -3,3 +3,4 @@
 /.phpunit.cache
 /.pest
 /.DS_Store
+.idea/
