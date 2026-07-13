@@ -54,11 +54,18 @@ class EcourierServiceProvider extends PackageServiceProvider
     private function registerWebhookRoute(): void
     {
         $path = config('ecourier.webhooks.path');
+        $domain = config('ecourier.webhooks.domain');
 
         if (! $path || $this->app->routesAreCached()) {
             return;
         }
 
-        Route::webhooks($path, config('ecourier.webhooks.name'));
+        $registerRoute = fn () => Route::webhooks($path, config('ecourier.webhooks.name'));
+
+        if ($domain) {
+            Route::domain($domain)->group($registerRoute);
+        } else {
+            $registerRoute();
+        }
     }
 }

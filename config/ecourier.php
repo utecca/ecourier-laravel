@@ -14,6 +14,7 @@ return [
     'webhooks' => [
         'enabled' => env('ECOURIER_WEBHOOKS_ENABLED', true),
         'path' => env('ECOURIER_WEBHOOK_PATH', 'webhooks/ecourier'),
+        'domain' => null,
         'name' => 'ecourier',
         'signing_secret' => env('ECOURIER_WEBHOOK_SECRET'),
         'signature_header_name' => env('ECOURIER_WEBHOOK_SIGNATURE_HEADER', 'Signature'),
