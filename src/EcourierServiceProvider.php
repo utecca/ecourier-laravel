@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Ecourier\Laravel;
 
 use Ecourier\EcourierConnector;
-use Illuminate\Support\Arr;
+use Ecourier\Laravel\Jobs\ProcessEcourierWebhookJob;
 use Illuminate\Support\Facades\Route;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
+use Spatie\WebhookClient\SignatureValidator\DefaultSignatureValidator;
+use Spatie\WebhookClient\WebhookProfile\ProcessEverythingWebhookProfile;
+use Spatie\WebhookClient\WebhookResponse\DefaultRespondsTo;
 
 class EcourierServiceProvider extends PackageServiceProvider
 {
@@ -28,7 +31,7 @@ class EcourierServiceProvider extends PackageServiceProvider
 
     public function packageBooted(): void
     {
-        if (! config('ecourier.webhooks.enabled')) {
+        if (! config('ecourier.webhook.enabled')) {
             return;
         }
 
@@ -39,28 +42,38 @@ class EcourierServiceProvider extends PackageServiceProvider
     private function registerWebhookConfig(): void
     {
         $configs = config('webhook-client.configs', []);
-        $name = config('ecourier.webhooks.name');
+        $name = config('ecourier.webhook.name');
 
         $configs = array_values(array_filter(
             $configs,
             fn (array $config): bool => ($config['name'] ?? null) !== $name,
         ));
 
-        $configs[] = Arr::except(config('ecourier.webhooks'), ['enabled', 'path']);
+        $configs[] = [
+            'name' => $name,
+            'signing_secret' => config('ecourier.webhook.signing_secret'),
+            'signature_header_name' => 'Signature',
+            'signature_validator' => DefaultSignatureValidator::class,
+            'webhook_profile' => ProcessEverythingWebhookProfile::class,
+            'webhook_response' => DefaultRespondsTo::class,
+            'webhook_model' => config('ecourier.webhook.webhook_model'),
+            'store_headers' => [],
+            'process_webhook_job' => ProcessEcourierWebhookJob::class,
+        ];
 
         config(['webhook-client.configs' => $configs]);
     }
 
     private function registerWebhookRoute(): void
     {
-        $path = config('ecourier.webhooks.path');
-        $domain = config('ecourier.webhooks.domain');
+        $path = config('ecourier.webhook.path');
+        $domain = config('ecourier.webhook.domain');
 
         if (! $path || $this->app->routesAreCached()) {
             return;
         }
 
-        $registerRoute = fn () => Route::webhooks($path, config('ecourier.webhooks.name'));
+        $registerRoute = fn () => Route::webhooks($path, config('ecourier.webhook.name'));
 
         if ($domain) {
             Route::domain($domain)->group($registerRoute);

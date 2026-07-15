@@ -10,6 +10,6 @@ class DisabledWebhooksTestCase extends TestCase
     {
         parent::defineEnvironment($app);
 
-        $app['config']->set('ecourier.webhooks.enabled', false);
+        $app['config']->set('ecourier.webhook.enabled', false);
     }
 }

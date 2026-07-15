@@ -8,7 +8,7 @@ use Spatie\WebhookClient\Models\WebhookCall;
 class CustomWebhookCall extends WebhookCall {}
 
 it('respects a custom webhook model', function () {
-    $this->app['config']->set('ecourier.webhooks.webhook_model', CustomWebhookCall::class);
+    $this->app['config']->set('ecourier.webhook.webhook_model', CustomWebhookCall::class);
 
     $this->app->getProvider(EcourierServiceProvider::class)->packageBooted();
 
