@@ -5,7 +5,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.4",
-        "ecourier/ecourier": "dev-main",
+        "ecourier/ecourier": "^1.0.0",
         "illuminate/support": "^12.0|^13.0",
         "spatie/laravel-package-tools": "^1.93",
         "spatie/laravel-webhook-client": "^3.6"
