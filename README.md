@@ -42,3 +42,12 @@ Event::listen(EcourierWebhookReceived::class, function (EcourierWebhookReceived 
     $event->webhookCall; // Spatie webhook call model
 });
 ```
+
+## Credits
+
+- [Bart Potmalnik](https://github.com/bpotmalnik) — original author
+- [All Contributors](https://github.com/utecca/ecourier-laravel/graphs/contributors)
+
+## License
+
+MIT — see [LICENSE](LICENSE).
