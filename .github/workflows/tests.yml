@@ -19,13 +19,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          path: ecourier-laravel
-
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          repository: utecca/ecourier-php-sdk
-          path: ecourier-php-sdk
 
       - name: Setup PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
@@ -34,12 +27,9 @@ jobs:
           coverage: none
 
       - name: Install dependencies
-        working-directory: ecourier-laravel
         run: |
-          composer config repositories.ecourier '{"type":"path","url":"../ecourier-php-sdk","options":{"versions":{"ecourier/ecourier":"1.0.0"}}}'
           composer require "laravel/framework:${{ matrix.laravel }}" --no-update
           composer update --prefer-dist --no-progress
 
       - name: Run tests
-        working-directory: ecourier-laravel
         run: vendor/bin/pest
