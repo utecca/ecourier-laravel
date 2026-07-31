@@ -6,9 +6,11 @@ namespace Ecourier\Laravel;
 
 use Ecourier\EcourierConnector;
 use Ecourier\Laravel\Jobs\ProcessEcourierWebhookJob;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Support\Facades\Route;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
+use Spatie\WebhookClient\Exceptions\InvalidWebhookSignature;
 use Spatie\WebhookClient\SignatureValidator\DefaultSignatureValidator;
 use Spatie\WebhookClient\WebhookProfile\ProcessEverythingWebhookProfile;
 use Spatie\WebhookClient\WebhookResponse\DefaultRespondsTo;
@@ -37,6 +39,7 @@ class EcourierServiceProvider extends PackageServiceProvider
 
         $this->registerWebhookConfig();
         $this->registerWebhookRoute();
+        $this->registerWebhookExceptionHandling();
     }
 
     private function registerWebhookConfig(): void
@@ -44,9 +47,12 @@ class EcourierServiceProvider extends PackageServiceProvider
         $configs = config('webhook-client.configs', []);
         $name = config('ecourier.webhook.name');
 
+        // Drop any prior 'ecourier' entry (re-registration) and Spatie's unconfigured
+        // 'default' placeholder, whose empty process_webhook_job crashes config resolution.
         $configs = array_values(array_filter(
             $configs,
-            fn (array $config): bool => ($config['name'] ?? null) !== $name,
+            fn (array $config): bool => ($config['name'] ?? null) !== $name
+                && ! empty($config['process_webhook_job'] ?? null),
         ));
 
         $configs[] = [
@@ -80,5 +86,14 @@ class EcourierServiceProvider extends PackageServiceProvider
         } else {
             $registerRoute();
         }
+    }
+
+    private function registerWebhookExceptionHandling(): void
+    {
+        $this->app->make(ExceptionHandler::class)->renderable(
+            fn (InvalidWebhookSignature $exception) => response()->json([
+                'message' => 'Invalid webhook signature.',
+            ], 400)
+        );
     }
 }
