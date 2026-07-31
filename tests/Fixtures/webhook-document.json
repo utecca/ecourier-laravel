@@ -14,6 +14,7 @@
             "transmitted_at": "2024-06-01T10:05:00Z",
             "channel": "NemHandel",
             "status": "Delivered",
+            "direction": "Send",
             "type": "Invoice",
             "latest_e2e_message_uuid": "msg_01abc",
             "latest_e2e_transmission_id": "trans_01def",
@@ -23,7 +24,7 @@
                 "scheme_icd": "0184",
                 "identifier": "12345678"
             },
-            "receiver": {
+            "recipient": {
                 "full_identifier": "0184:87654321",
                 "scheme": "DK:CVR",
                 "scheme_icd": "0184",
