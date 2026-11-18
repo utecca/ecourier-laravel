@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 use Ecourier\Laravel\Events\EcourierWebhookReceived;
 use Ecourier\Laravel\Jobs\ProcessEcourierWebhookJob;
-use Illuminate\Redis\Connections\Connection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
 use Spatie\WebhookClient\Models\WebhookCall;
 
 it('parses the webhook payload and dispatches an event', function () {
@@ -49,9 +48,8 @@ it('skips a webhook with an unknown event type', function () {
 });
 
 it('records a failure on the webhook call and releases the event', function () {
-    $connection = Mockery::mock(Connection::class);
-    $connection->shouldReceive('del')->once()->with('ecourier:webhook:evt_01hxyz')->andReturn(1);
-    Redis::shouldReceive('connection')->with('default')->andReturn($connection);
+    config(['cache.default' => 'array']);
+    Cache::add('ecourier:webhook:evt_01hxyz', true, 60);
 
     (include dirname(__DIR__, 2).'/vendor/spatie/laravel-webhook-client/database/migrations/create_webhook_calls_table.php.stub')->up();
 
@@ -64,5 +62,6 @@ it('records a failure on the webhook call and releases the event', function () {
 
     (new ProcessEcourierWebhookJob($webhookCall))->failed(new Error('Listener failed'));
 
-    expect($webhookCall->fresh()->exception['message'])->toBe('Listener failed');
+    expect($webhookCall->fresh()->exception['message'])->toBe('Listener failed')
+        ->and(Cache::has('ecourier:webhook:evt_01hxyz'))->toBeFalse();
 });

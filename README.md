@@ -62,11 +62,11 @@ Event::listen(EcourierWebhookReceived::class, function (EcourierWebhookReceived 
 
 The webhook is processed on your queue. Some situations to know about:
 
-- **Repeated deliveries are skipped.** eCourier retries a delivery if your app doesn't answer in time, and you can resend an event from the dashboard. A webhook whose `event_id` was received in the last 24 hours is skipped, unless processing it failed. This needs Redis: each `event_id` is stored on your Redis connection with an atomic `SET NX`, so two copies arriving at once can't both get through. To process every delivery, or if you don't use Redis, set `ECOURIER_WEBHOOK_SKIP_DUPLICATES=false`.
+- **Repeated deliveries are skipped.** eCourier retries a delivery if your app doesn't answer in time, and you can resend an event from the dashboard. A webhook whose `event_id` was received in the last 24 hours is skipped, unless processing it failed. Each `event_id` is stored in your cache with `Cache::add()`. On the `redis`, `memcached`, `database` and `dynamodb` stores this is atomic, so two copies arriving at once can't both get through. The `file` store isn't atomic, and the `array` store only lasts for one request, so use a shared store in production. To process every delivery, set `ECOURIER_WEBHOOK_SKIP_DUPLICATES=false`.
 
   ```dotenv
-  ECOURIER_WEBHOOK_REDIS_CONNECTION=default  # a connection from config/database.php
-  ECOURIER_WEBHOOK_DUPLICATE_TTL=86400       # seconds an event_id is remembered
+  ECOURIER_WEBHOOK_CACHE_STORE=redis   # a store from config/cache.php; empty uses your default store
+  ECOURIER_WEBHOOK_DUPLICATE_TTL=86400 # seconds an event_id is remembered
   ```
 - **Unknown event types are skipped.** If eCourier sends an event type that your version of `ecourier/ecourier` doesn't know, the webhook is logged as a warning and skipped, rather than failing the job. Update the SDK to receive it.
 - **Failures are recorded.** When a listener throws and the job fails, the exception is saved on the webhook call and the event's `event_id` is released, so a resend of that event is processed again.
