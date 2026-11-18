@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Ecourier\EcourierConnector;
+use Ecourier\Laravel\Exceptions\MissingConfigurationException;
 use Ecourier\Laravel\Jobs\ProcessEcourierWebhookJob;
 use Illuminate\Support\Facades\Route;
 use Spatie\WebhookClient\Models\WebhookCall;
@@ -25,3 +26,9 @@ it('registers the default webhook client config', function () {
 it('registers the webhook route by default', function () {
     expect(Route::has('webhook-client-ecourier'))->toBeTrue();
 });
+
+it('throws a clear error when the api key is not set', function () {
+    config(['ecourier.api_key' => null]);
+
+    app(EcourierConnector::class);
+})->throws(MissingConfigurationException::class, 'ECOURIER_API_KEY');

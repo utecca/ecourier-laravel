@@ -5,14 +5,15 @@ declare(strict_types=1);
 namespace Ecourier\Laravel;
 
 use Ecourier\EcourierConnector;
+use Ecourier\Laravel\Exceptions\MissingConfigurationException;
 use Ecourier\Laravel\Jobs\ProcessEcourierWebhookJob;
+use Ecourier\Laravel\Webhooks\EcourierSignatureValidator;
+use Ecourier\Laravel\Webhooks\SkipDuplicateWebhooks;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Support\Facades\Route;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 use Spatie\WebhookClient\Exceptions\InvalidWebhookSignature;
-use Spatie\WebhookClient\SignatureValidator\DefaultSignatureValidator;
-use Spatie\WebhookClient\WebhookProfile\ProcessEverythingWebhookProfile;
 use Spatie\WebhookClient\WebhookResponse\DefaultRespondsTo;
 
 class EcourierServiceProvider extends PackageServiceProvider
@@ -26,9 +27,15 @@ class EcourierServiceProvider extends PackageServiceProvider
 
     public function packageRegistered(): void
     {
-        $this->app->singleton(EcourierConnector::class, fn (): EcourierConnector => new EcourierConnector(
-            apiKey: (string) config('ecourier.api_key', ''),
-        ));
+        $this->app->singleton(EcourierConnector::class, function (): EcourierConnector {
+            $apiKey = config('ecourier.api_key');
+
+            if (! is_string($apiKey) || $apiKey === '') {
+                throw MissingConfigurationException::apiKey();
+            }
+
+            return new EcourierConnector(apiKey: $apiKey);
+        });
     }
 
     public function packageBooted(): void
@@ -59,8 +66,8 @@ class EcourierServiceProvider extends PackageServiceProvider
             'name' => $name,
             'signing_secret' => config('ecourier.webhook.signing_secret'),
             'signature_header_name' => 'Signature',
-            'signature_validator' => DefaultSignatureValidator::class,
-            'webhook_profile' => ProcessEverythingWebhookProfile::class,
+            'signature_validator' => EcourierSignatureValidator::class,
+            'webhook_profile' => SkipDuplicateWebhooks::class,
             'webhook_response' => DefaultRespondsTo::class,
             'webhook_model' => config('ecourier.webhook.webhook_model'),
             'store_headers' => [],

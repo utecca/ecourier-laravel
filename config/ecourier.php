@@ -14,5 +14,8 @@ return [
         'name' => 'ecourier',
         'signing_secret' => env('ECOURIER_WEBHOOK_SECRET'),
         'webhook_model' => env('ECOURIER_WEBHOOK_MODEL', WebhookCall::class),
+
+        // Skip a webhook whose event_id was already received and didn't fail, e.g. a retried or resent delivery.
+        'skip_duplicates' => env('ECOURIER_WEBHOOK_SKIP_DUPLICATES', true),
     ],
 ];
