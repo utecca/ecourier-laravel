@@ -49,14 +49,37 @@ ECOURIER_WEBHOOK_SECRET=your_webhook_secret
 ECOURIER_WEBHOOK_MODEL="App\Models\WebhookCall"
 ```
 
-Listen for parsed webhook events:
+Each webhook fires an event for its type, so you can listen only for the ones you need:
+
+```php
+use Ecourier\Laravel\Events\Document\DocumentReceiveReady;
+
+Event::listen(DocumentReceiveReady::class, function (DocumentReceiveReady $event) {
+    $event->document; // Ecourier\Data\Responses\DocumentData
+    $event->webhook; // Ecourier\Data\Responses\Webhook\DocumentWebhook, with eventId, mode, companyId and occurredAt
+    $event->webhookCall; // Spatie webhook call model
+});
+```
+
+| Webhook | Event |
+|---|---|
+| `Document.Send.Created` | `DocumentSendCreated` |
+| `Document.Send.Delivered` | `DocumentSendDelivered` |
+| `Document.Send.Failed` | `DocumentSendFailed` |
+| `Document.Receive.Created` | `DocumentReceiveCreated` |
+| `Document.Receive.Ready` | `DocumentReceiveReady` |
+| `Document.Receive.Delivered` | `DocumentReceiveDelivered` |
+
+The events are in the `Ecourier\Laravel\Events\Document` namespace and extend `DocumentWebhookEvent`, so `$event->webhook` is a `DocumentWebhook`. Laravel's event discovery picks up listeners that type-hint one of them.
+
+Every webhook also fires `EcourierWebhookReceived`, before the typed event, if you'd rather handle all of them in one place:
 
 ```php
 use Ecourier\Laravel\Events\EcourierWebhookReceived;
 
 Event::listen(EcourierWebhookReceived::class, function (EcourierWebhookReceived $event) {
-    $event->webhook; // Ecourier\Data\Responses\Webhook\DocumentWebhook
-    $event->webhookCall; // Spatie webhook call model
+    $event->webhook; // Ecourier\Data\Responses\Webhook\WebhookEvent
+    $event->webhook->event; // Ecourier\Enums\WebhookEventType
 });
 ```
 
