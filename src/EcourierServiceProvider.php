@@ -51,14 +51,15 @@ class EcourierServiceProvider extends PackageServiceProvider
 
     private function registerWebhookConfig(): void
     {
-        $configs = config('webhook-client.configs', []);
-        $name = config('ecourier.webhook.name');
+        $configs = config()->array('webhook-client.configs', []);
+        $name = config()->string('ecourier.webhook.name');
 
         // Drop any prior 'ecourier' entry (re-registration) and Spatie's unconfigured
         // 'default' placeholder, whose empty process_webhook_job crashes config resolution.
         $configs = array_values(array_filter(
             $configs,
-            fn (array $config): bool => ($config['name'] ?? null) !== $name
+            fn (mixed $config): bool => is_array($config)
+                && ($config['name'] ?? null) !== $name
                 && ! empty($config['process_webhook_job'] ?? null),
         ));
 
@@ -81,14 +82,15 @@ class EcourierServiceProvider extends PackageServiceProvider
     {
         $path = config('ecourier.webhook.path');
         $domain = config('ecourier.webhook.domain');
+        $name = config()->string('ecourier.webhook.name');
 
-        if (! $path || $this->app->routesAreCached()) {
+        if (! is_string($path) || $path === '' || $this->app->routesAreCached()) {
             return;
         }
 
-        $registerRoute = fn () => Route::webhooks($path, config('ecourier.webhook.name'));
+        $registerRoute = fn () => Route::webhooks($path, $name);
 
-        if ($domain) {
+        if (is_string($domain) && $domain !== '') {
             Route::domain($domain)->group($registerRoute);
         } else {
             $registerRoute();

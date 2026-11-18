@@ -27,7 +27,7 @@ class SkipDuplicateWebhooks implements WebhookProfile
             return true;
         }
 
-        return Cache::add(self::key($eventId), true, (int) config('ecourier.webhook.duplicate_ttl', 86400));
+        return Cache::add(self::key($eventId), true, config()->integer('ecourier.webhook.duplicate_ttl', 86400));
     }
 
     /**

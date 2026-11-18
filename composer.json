@@ -11,6 +11,7 @@
         "spatie/laravel-webhook-client": "^3.6"
     },
     "require-dev": {
+        "larastan/larastan": "^3.0",
         "laravel/pint": "^1.0",
         "orchestra/testbench": "^10.0|^11.0",
         "pestphp/pest": "^4.0",
@@ -35,7 +36,8 @@
     },
     "scripts": {
         "test": "pest",
-        "format": "pint"
+        "format": "pint",
+        "analyse": "phpstan analyse --memory-limit=1G"
     },
     "minimum-stability": "beta",
     "prefer-stable": true,
