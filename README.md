@@ -31,7 +31,18 @@ Set your API key in `.env`:
 ECOURIER_API_KEY=pk_test_your_key
 ```
 
-Incoming webhooks are registered at `/webhooks/ecourier` by default and are handled by `spatie/laravel-webhook-client`.
+If the API key is missing, resolving `EcourierConnector` throws a `MissingConfigurationException`.
+
+## Webhooks
+
+Incoming webhooks are registered at `/webhooks/ecourier` by default and are handled by `spatie/laravel-webhook-client`, which stores each call in a `webhook_calls` table. Publish its migration and run it:
+
+```bash
+php artisan vendor:publish --provider="Spatie\WebhookClient\WebhookClientServiceProvider" --tag="webhook-client-migrations"
+php artisan migrate
+```
+
+Set the signing secret from your eCourier webhook settings. Webhooks are rejected with a `MissingConfigurationException` until it's set. If you don't receive webhooks, set `ECOURIER_WEBHOOK_ENABLED=false` instead.
 
 ```dotenv
 ECOURIER_WEBHOOK_SECRET=your_webhook_secret
@@ -48,6 +59,16 @@ Event::listen(EcourierWebhookReceived::class, function (EcourierWebhookReceived 
     $event->webhookCall; // Spatie webhook call model
 });
 ```
+
+The webhook is processed on your queue. Some situations to know about:
+
+- **Repeated deliveries are skipped.** eCourier retries a delivery if your app doesn't answer in time, and you can resend an event from the dashboard. A webhook whose `event_id` was received in the last 24 hours is skipped, unless processing it failed. Each `event_id` is stored in your default cache store with `Cache::add()`. On the `redis`, `memcached`, `database` and `dynamodb` stores this is atomic, so two copies arriving at once can't both get through. The `file` store isn't atomic, and the `array` store only lasts for one request, so use a shared store in production. To process every delivery, set `ECOURIER_WEBHOOK_SKIP_DUPLICATES=false`.
+
+  ```dotenv
+  ECOURIER_WEBHOOK_DUPLICATE_TTL=86400 # seconds an event_id is remembered
+  ```
+- **Unknown event types are skipped.** If eCourier sends an event type that your version of `ecourier/ecourier` doesn't know, the webhook is logged as a warning and skipped, rather than failing the job. Update the SDK to receive it.
+- **Failures are recorded.** When a listener throws and the job fails, the exception is saved on the webhook call and the event's `event_id` is released, so a resend of that event is processed again.
 
 ## Credits
 

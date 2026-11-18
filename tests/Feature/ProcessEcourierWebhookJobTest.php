@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use Ecourier\Laravel\Events\EcourierWebhookReceived;
 use Ecourier\Laravel\Jobs\ProcessEcourierWebhookJob;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 use Spatie\WebhookClient\Models\WebhookCall;
 
 it('parses the webhook payload and dispatches an event', function () {
@@ -24,4 +26,42 @@ it('parses the webhook payload and dispatches an event', function () {
             && $event->webhook->document->id === 'doc_01xyz'
             && $event->webhookCall === $webhookCall;
     });
+});
+
+it('skips a webhook with an unknown event type', function () {
+    Event::fake([EcourierWebhookReceived::class]);
+    Log::spy();
+
+    $webhookCall = new WebhookCall([
+        'name' => 'ecourier',
+        'url' => 'https://example.test/webhooks/ecourier',
+        'headers' => [],
+        'payload' => ['event_id' => 'evt_01new', 'event' => 'Company.Created'],
+    ]);
+
+    (new ProcessEcourierWebhookJob($webhookCall))->handle();
+
+    Event::assertNotDispatched(EcourierWebhookReceived::class);
+    Log::shouldHaveReceived('warning')
+        ->once()
+        ->withArgs(fn (string $message, array $context): bool => $context['event'] === 'Company.Created');
+});
+
+it('records a failure on the webhook call and releases the event', function () {
+    config(['cache.default' => 'array']);
+    Cache::add('ecourier:webhook:evt_01hxyz', true, 60);
+
+    (include dirname(__DIR__, 2).'/vendor/spatie/laravel-webhook-client/database/migrations/create_webhook_calls_table.php.stub')->up();
+
+    $webhookCall = WebhookCall::create([
+        'name' => 'ecourier',
+        'url' => 'https://example.test/webhooks/ecourier',
+        'headers' => [],
+        'payload' => ['event_id' => 'evt_01hxyz'],
+    ]);
+
+    (new ProcessEcourierWebhookJob($webhookCall))->failed(new Error('Listener failed'));
+
+    expect($webhookCall->fresh()->exception['message'])->toBe('Listener failed')
+        ->and(Cache::has('ecourier:webhook:evt_01hxyz'))->toBeFalse();
 });
