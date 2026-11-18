@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Ecourier\Laravel\Webhooks;
 
 use Illuminate\Http\Request;
-use Spatie\WebhookClient\Models\WebhookCall;
+use Illuminate\Redis\Connections\Connection;
+use Illuminate\Support\Facades\Redis;
 use Spatie\WebhookClient\WebhookProfile\WebhookProfile;
 
 /**
  * Skips a webhook whose event was already received, so a retried or resent delivery doesn't run your
- * listeners twice. An event whose earlier call failed is processed again.
+ * listeners twice. Each event_id is claimed with an atomic Redis SET NX, which expires after the
+ * configured time. The claim is released when processing fails, so a resend is processed again.
  */
 class SkipDuplicateWebhooks implements WebhookProfile
 {
@@ -26,13 +28,26 @@ class SkipDuplicateWebhooks implements WebhookProfile
             return true;
         }
 
-        /** @var class-string<WebhookCall> $model */
-        $model = config('ecourier.webhook.webhook_model', WebhookCall::class);
+        $ttl = (int) config('ecourier.webhook.duplicate_ttl', 86400);
 
-        return ! $model::query()
-            ->where('name', config('ecourier.webhook.name'))
-            ->where('payload->event_id', $eventId)
-            ->whereNull('exception')
-            ->exists();
+        return (bool) self::redis()->set(self::key($eventId), '1', 'EX', $ttl, 'NX');
+    }
+
+    /**
+     * Releases the claim on an event, so its next delivery is processed.
+     */
+    public static function release(string $eventId): void
+    {
+        self::redis()->del(self::key($eventId));
+    }
+
+    private static function key(string $eventId): string
+    {
+        return 'ecourier:webhook:'.$eventId;
+    }
+
+    private static function redis(): Connection
+    {
+        return Redis::connection(config('ecourier.webhook.redis_connection'));
     }
 }

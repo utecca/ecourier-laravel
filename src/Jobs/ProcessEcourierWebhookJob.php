@@ -7,6 +7,7 @@ namespace Ecourier\Laravel\Jobs;
 use Ecourier\Data\Responses\Webhook\WebhookEventFactory;
 use Ecourier\Enums\WebhookEventType;
 use Ecourier\Laravel\Events\EcourierWebhookReceived;
+use Ecourier\Laravel\Webhooks\SkipDuplicateWebhooks;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Spatie\WebhookClient\Jobs\ProcessWebhookJob;
@@ -36,7 +37,7 @@ class ProcessEcourierWebhookJob extends ProcessWebhookJob
     }
 
     /**
-     * Records the failure on the stored call, so a resent delivery of the same event is processed again.
+     * Records the failure on the stored call, and releases the event so a resent delivery is processed again.
      */
     public function failed(Throwable $exception): void
     {
@@ -45,5 +46,11 @@ class ProcessEcourierWebhookJob extends ProcessWebhookJob
                 ? $exception
                 : new Exception($exception->getMessage(), (int) $exception->getCode(), $exception),
         );
+
+        $eventId = $this->webhookCall->payload['event_id'] ?? null;
+
+        if (config('ecourier.webhook.skip_duplicates', true) && is_string($eventId) && $eventId !== '') {
+            SkipDuplicateWebhooks::release($eventId);
+        }
     }
 }
