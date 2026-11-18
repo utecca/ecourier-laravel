@@ -9,6 +9,12 @@ composer require ecourier/ecourier-laravel
 php artisan vendor:publish --tag=ecourier-config
 ```
 
+Version 2 is in beta and requires `ecourier/ecourier` v2. To try it, require both explicitly:
+
+```bash
+composer require ecourier/ecourier-laravel:^2.0@beta ecourier/ecourier:^2.0@beta
+```
+
 ## Usage
 
 ```php
@@ -38,7 +44,7 @@ Listen for parsed webhook events:
 use Ecourier\Laravel\Events\EcourierWebhookReceived;
 
 Event::listen(EcourierWebhookReceived::class, function (EcourierWebhookReceived $event) {
-    $event->webhook; // Ecourier\Data\Webhook\DocumentWebhook
+    $event->webhook; // Ecourier\Data\Responses\Webhook\DocumentWebhook
     $event->webhookCall; // Spatie webhook call model
 });
 ```
