@@ -66,16 +66,6 @@ it('processes an event again once the ttl has passed', function () {
     expect(WebhookCall::count())->toBe(2);
 });
 
-it('uses the configured cache store', function () {
-    $this->app['config']->set('cache.stores.ecourier', ['driver' => 'array']);
-    $this->app['config']->set('ecourier.webhook.cache_store', 'ecourier');
-
-    sendSignedWebhook($this)->assertOk();
-
-    expect(Cache::store('ecourier')->has('ecourier:webhook:evt_01hxyz'))->toBeTrue()
-        ->and(Cache::has('ecourier:webhook:evt_01hxyz'))->toBeFalse();
-});
-
 it('processes repeated deliveries when skipping duplicates is off', function () {
     $this->app['config']->set('ecourier.webhook.skip_duplicates', false);
 

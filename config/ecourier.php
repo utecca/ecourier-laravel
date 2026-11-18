@@ -16,9 +16,8 @@ return [
         'webhook_model' => env('ECOURIER_WEBHOOK_MODEL', WebhookCall::class),
 
         // Skip a webhook whose event_id was already received and didn't fail, e.g. a retried or resent delivery.
-        // Each event_id is remembered in the cache store for duplicate_ttl seconds. Null uses your default store.
+        // Each event_id is remembered in your default cache store for duplicate_ttl seconds.
         'skip_duplicates' => env('ECOURIER_WEBHOOK_SKIP_DUPLICATES', true),
-        'cache_store' => env('ECOURIER_WEBHOOK_CACHE_STORE'),
         'duplicate_ttl' => (int) env('ECOURIER_WEBHOOK_DUPLICATE_TTL', 86400),
     ],
 ];

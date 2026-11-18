@@ -4,15 +4,14 @@ declare(strict_types=1);
 
 namespace Ecourier\Laravel\Webhooks;
 
-use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Spatie\WebhookClient\WebhookProfile\WebhookProfile;
 
 /**
  * Skips a webhook whose event was already received, so a retried or resent delivery doesn't run your
- * listeners twice. Each event_id is claimed with Cache::add(), which is atomic on the Redis, Memcached,
- * database and DynamoDB stores. The claim is released when processing fails, so a resend is processed again.
+ * listeners twice. Each event_id is claimed with Cache::add() on the app's default cache store, which is
+ * atomic on the Redis, Memcached, database and DynamoDB stores. The claim is released when processing fails, so a resend is processed again.
  */
 class SkipDuplicateWebhooks implements WebhookProfile
 {
@@ -28,7 +27,7 @@ class SkipDuplicateWebhooks implements WebhookProfile
             return true;
         }
 
-        return self::cache()->add(self::key($eventId), true, (int) config('ecourier.webhook.duplicate_ttl', 86400));
+        return Cache::add(self::key($eventId), true, (int) config('ecourier.webhook.duplicate_ttl', 86400));
     }
 
     /**
@@ -36,16 +35,11 @@ class SkipDuplicateWebhooks implements WebhookProfile
      */
     public static function release(string $eventId): void
     {
-        self::cache()->forget(self::key($eventId));
+        Cache::forget(self::key($eventId));
     }
 
     private static function key(string $eventId): string
     {
         return 'ecourier:webhook:'.$eventId;
-    }
-
-    private static function cache(): Repository
-    {
-        return Cache::store(config('ecourier.webhook.cache_store'));
     }
 }
