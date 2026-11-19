@@ -7,6 +7,7 @@ use Ecourier\Laravel\Events\EcourierWebhookReceived;
 use Ecourier\Laravel\Jobs\ProcessEcourierWebhookJob;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Testing\TestResponse;
 use Spatie\WebhookClient\Models\WebhookCall;
 
@@ -42,8 +43,27 @@ it('skips a repeated delivery of an event', function () {
     sendSignedWebhook($this)->assertOk();
     sendSignedWebhook($this)->assertOk();
 
-    expect(WebhookCall::count())->toBe(1);
+    expect(WebhookCall::count())->toBe(2);
     Event::assertDispatchedTimes(EcourierWebhookReceived::class, 1);
+});
+
+it('does not claim an event before its job runs', function () {
+    Queue::fake();
+
+    sendSignedWebhook($this)->assertOk();
+
+    expect(Cache::has('ecourier:webhook:evt_01hxyz'))->toBeFalse();
+    Queue::assertPushed(ProcessEcourierWebhookJob::class);
+});
+
+it('processes a retry of the same job', function () {
+    Queue::fake();
+    sendSignedWebhook($this)->assertOk();
+
+    (new ProcessEcourierWebhookJob(WebhookCall::first()))->handle();
+    (new ProcessEcourierWebhookJob(WebhookCall::first()))->handle();
+
+    Event::assertDispatchedTimes(EcourierWebhookReceived::class, 2);
 });
 
 it('processes an event again when its earlier job failed', function () {
@@ -75,4 +95,26 @@ it('processes repeated deliveries when skipping duplicates is off', function () 
     expect(WebhookCall::count())->toBe(2)
         ->and(Cache::has('ecourier:webhook:evt_01hxyz'))->toBeFalse();
     Event::assertDispatchedTimes(EcourierWebhookReceived::class, 2);
+});
+
+it('remembers events in the configured cache store', function () {
+    $this->app['config']->set('cache.stores.webhooks', ['driver' => 'array']);
+    $this->app['config']->set('ecourier.webhook.cache_store', 'webhooks');
+
+    sendSignedWebhook($this)->assertOk();
+    sendSignedWebhook($this)->assertOk();
+
+    expect(Cache::store('webhooks')->has('ecourier:webhook:evt_01hxyz'))->toBeTrue()
+        ->and(Cache::has('ecourier:webhook:evt_01hxyz'))->toBeFalse();
+    Event::assertDispatchedTimes(EcourierWebhookReceived::class, 1);
+});
+
+it('releases a failed event in the configured cache store', function () {
+    $this->app['config']->set('cache.stores.webhooks', ['driver' => 'array']);
+    $this->app['config']->set('ecourier.webhook.cache_store', 'webhooks');
+
+    sendSignedWebhook($this)->assertOk();
+    (new ProcessEcourierWebhookJob(WebhookCall::first()))->failed(new Exception('Listener failed'));
+
+    expect(Cache::store('webhooks')->has('ecourier:webhook:evt_01hxyz'))->toBeFalse();
 });

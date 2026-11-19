@@ -50,6 +50,17 @@ class ProcessEcourierWebhookJob extends ProcessWebhookJob
             return;
         }
 
+        $eventId = $this->eventId();
+
+        if ($eventId !== null && SkipDuplicateWebhooks::enabled() && ! SkipDuplicateWebhooks::claim($eventId, $this->owner())) {
+            Log::info('Skipped a repeated eCourier webhook.', [
+                'event_id' => $eventId,
+                'webhook_call_id' => $this->webhookCall->getKey(),
+            ]);
+
+            return;
+        }
+
         $webhook = WebhookEventFactory::fromArray($payload);
 
         event(new EcourierWebhookReceived(webhook: $webhook, webhookCall: $this->webhookCall));
@@ -89,10 +100,27 @@ class ProcessEcourierWebhookJob extends ProcessWebhookJob
                 : new Exception($exception->getMessage(), (int) $exception->getCode(), $exception),
         );
 
+        $eventId = $this->eventId();
+
+        if ($eventId !== null && SkipDuplicateWebhooks::enabled()) {
+            SkipDuplicateWebhooks::release($eventId, $this->owner());
+        }
+    }
+
+    private function eventId(): ?string
+    {
         $eventId = $this->webhookCall->payload['event_id'] ?? null;
 
-        if (config('ecourier.webhook.skip_duplicates', true) && is_string($eventId) && $eventId !== '') {
-            SkipDuplicateWebhooks::release($eventId);
-        }
+        return is_string($eventId) && $eventId !== '' ? $eventId : null;
+    }
+
+    /**
+     * The webhook call that claims the event, so a retry of this job keeps its claim.
+     */
+    private function owner(): string
+    {
+        $key = $this->webhookCall->getKey();
+
+        return is_int($key) || is_string($key) ? (string) $key : spl_object_hash($this->webhookCall);
     }
 }

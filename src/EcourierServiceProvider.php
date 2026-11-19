@@ -8,12 +8,12 @@ use Ecourier\EcourierConnector;
 use Ecourier\Laravel\Exceptions\MissingConfigurationException;
 use Ecourier\Laravel\Jobs\ProcessEcourierWebhookJob;
 use Ecourier\Laravel\Webhooks\EcourierSignatureValidator;
-use Ecourier\Laravel\Webhooks\SkipDuplicateWebhooks;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Support\Facades\Route;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 use Spatie\WebhookClient\Exceptions\InvalidWebhookSignature;
+use Spatie\WebhookClient\WebhookProfile\ProcessEverythingWebhookProfile;
 use Spatie\WebhookClient\WebhookResponse\DefaultRespondsTo;
 
 class EcourierServiceProvider extends PackageServiceProvider
@@ -68,7 +68,7 @@ class EcourierServiceProvider extends PackageServiceProvider
             'signing_secret' => config('ecourier.webhook.signing_secret'),
             'signature_header_name' => 'Signature',
             'signature_validator' => EcourierSignatureValidator::class,
-            'webhook_profile' => SkipDuplicateWebhooks::class,
+            'webhook_profile' => ProcessEverythingWebhookProfile::class,
             'webhook_response' => DefaultRespondsTo::class,
             'webhook_model' => config('ecourier.webhook.webhook_model'),
             'store_headers' => [],
