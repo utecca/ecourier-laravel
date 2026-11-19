@@ -9,12 +9,6 @@ composer require ecourier/ecourier-laravel
 php artisan vendor:publish --tag=ecourier-config
 ```
 
-Version 2 is in beta and requires `ecourier/ecourier` v2. To try it, require both explicitly:
-
-```bash
-composer require ecourier/ecourier-laravel:^2.0@beta ecourier/ecourier:^2.0@beta
-```
-
 ## Usage
 
 ```php
@@ -85,13 +79,24 @@ Event::listen(EcourierWebhookReceived::class, function (EcourierWebhookReceived 
 
 The webhook is processed on your queue. Some situations to know about:
 
-- **Repeated deliveries are skipped.** eCourier retries a delivery if your app doesn't answer in time, and you can resend an event from the dashboard. A webhook whose `event_id` was received in the last 24 hours is skipped, unless processing it failed. Each `event_id` is stored in your default cache store with `Cache::add()`. On the `redis`, `memcached`, `database` and `dynamodb` stores this is atomic, so two copies arriving at once can't both get through. The `file` store isn't atomic, and the `array` store only lasts for one request, so use a shared store in production. To process every delivery, set `ECOURIER_WEBHOOK_SKIP_DUPLICATES=false`.
+- **Repeated deliveries are skipped.** eCourier retries a delivery if your app doesn't answer in time, and you can resend an event from the eCourier portal. When the job starts, it claims the webhook's `event_id` with `Cache::add()` in your default cache store, or in the store named by `ECOURIER_WEBHOOK_CACHE_STORE`. A later delivery of an event that was claimed in the last 24 hours is stored but skipped, and logged at info level. If the job fails, the claim is released, so a resend is processed again. Nothing is claimed until the job runs, so a delivery that fails to be stored or queued is processed when eCourier retries it. To process every delivery, set `ECOURIER_WEBHOOK_SKIP_DUPLICATES=false`.
+
+  Which store you use decides whether the check is reliable:
+
+  | Store | Duplicates skipped reliably? |
+  |---|---|
+  | `redis`, `memcached`, `database`, `dynamodb` | Yes. `Cache::add()` is atomic, so two copies arriving at once can't both get through. |
+  | `file` | Mostly. It isn't atomic, so two copies arriving at the same moment can both be processed. |
+  | `array` | No. It only lasts for one request, so nothing is remembered between deliveries. |
+
+  If your default store is `file` or `array`, point the check at a shared store without changing your app's default:
 
   ```dotenv
+  ECOURIER_WEBHOOK_CACHE_STORE=redis
   ECOURIER_WEBHOOK_DUPLICATE_TTL=86400 # seconds an event_id is remembered
   ```
 - **Unknown event types are skipped.** If eCourier sends an event type that your version of `ecourier/ecourier` doesn't know, the webhook is logged as a warning and skipped, rather than failing the job. Update the SDK to receive it.
-- **Failures are recorded.** When a listener throws and the job fails, the exception is saved on the webhook call and the event's `event_id` is released, so a resend of that event is processed again.
+- **Failures are recorded.** When a listener throws and the job fails, the exception is saved on the webhook call.
 
 ## Credits
 

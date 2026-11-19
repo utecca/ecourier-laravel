@@ -4,38 +4,57 @@ declare(strict_types=1);
 
 namespace Ecourier\Laravel\Webhooks;
 
-use Illuminate\Http\Request;
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
-use Spatie\WebhookClient\WebhookProfile\WebhookProfile;
 
 /**
- * Skips a webhook whose event was already received, so a retried or resent delivery doesn't run your
- * listeners twice. Each event_id is claimed with Cache::add() on the app's default cache store, which is
- * atomic on the Redis, Memcached, database and DynamoDB stores. The claim is released when processing fails, so a resend is processed again.
+ * Makes sure a webhook event is processed once, so a retried or resent delivery doesn't run your listeners twice.
+ *
+ * The job claims each event_id with Cache::add() on the store set in ecourier.webhook.cache_store (the app's
+ * default store when unset), storing the webhook call that owns it. That is atomic on the Redis, Memcached,
+ * database and DynamoDB stores; on the file store, and the array store (which only lasts one request),
+ * duplicates can still get through. The claim is released when the job fails, so a resend is processed again.
+ *
+ * @internal
  */
-class SkipDuplicateWebhooks implements WebhookProfile
+final class SkipDuplicateWebhooks
 {
-    public function shouldProcess(Request $request): bool
+    public static function enabled(): bool
     {
-        if (! config('ecourier.webhook.skip_duplicates', true)) {
-            return true;
-        }
-
-        $eventId = $request->input('event_id');
-
-        if (! is_string($eventId) || $eventId === '') {
-            return true;
-        }
-
-        return Cache::add(self::key($eventId), true, config()->integer('ecourier.webhook.duplicate_ttl', 86400));
+        return (bool) config('ecourier.webhook.skip_duplicates', true);
     }
 
     /**
-     * Releases the claim on an event, so its next delivery is processed.
+     * Claims an event for a webhook call. Returns false when another webhook call already claimed it.
+     * A retry of the job for the same webhook call keeps its claim.
      */
-    public static function release(string $eventId): void
+    public static function claim(string $eventId, string $owner): bool
     {
-        Cache::forget(self::key($eventId));
+        $cache = self::cache();
+        $key = self::key($eventId);
+
+        return $cache->add($key, $owner, config()->integer('ecourier.webhook.duplicate_ttl', 86400))
+            || $cache->get($key) === $owner;
+    }
+
+    /**
+     * Releases an event claimed by this webhook call, so its next delivery is processed.
+     */
+    public static function release(string $eventId, string $owner): void
+    {
+        $cache = self::cache();
+        $key = self::key($eventId);
+
+        if ($cache->get($key) === $owner) {
+            $cache->forget($key);
+        }
+    }
+
+    private static function cache(): Repository
+    {
+        $store = config('ecourier.webhook.cache_store');
+
+        return Cache::store(is_string($store) && $store !== '' ? $store : null);
     }
 
     private static function key(string $eventId): string

@@ -106,7 +106,6 @@ it('skips a webhook with an unknown event type', function () {
 
 it('records a failure on the webhook call and releases the event', function () {
     config(['cache.default' => 'array']);
-    Cache::add('ecourier:webhook:evt_01hxyz', true, 60);
 
     (include dirname(__DIR__, 2).'/vendor/spatie/laravel-webhook-client/database/migrations/create_webhook_calls_table.php.stub')->up();
 
@@ -116,9 +115,28 @@ it('records a failure on the webhook call and releases the event', function () {
         'headers' => [],
         'payload' => ['event_id' => 'evt_01hxyz'],
     ]);
+    Cache::add('ecourier:webhook:evt_01hxyz', (string) $webhookCall->getKey(), 60);
 
     (new ProcessEcourierWebhookJob($webhookCall))->failed(new Error('Listener failed'));
 
     expect($webhookCall->fresh()->exception['message'])->toBe('Listener failed')
         ->and(Cache::has('ecourier:webhook:evt_01hxyz'))->toBeFalse();
+});
+
+it('keeps another webhook call\'s claim when its own job fails', function () {
+    config(['cache.default' => 'array']);
+
+    (include dirname(__DIR__, 2).'/vendor/spatie/laravel-webhook-client/database/migrations/create_webhook_calls_table.php.stub')->up();
+
+    $webhookCall = WebhookCall::create([
+        'name' => 'ecourier',
+        'url' => 'https://example.test/webhooks/ecourier',
+        'headers' => [],
+        'payload' => ['event_id' => 'evt_01hxyz'],
+    ]);
+    Cache::add('ecourier:webhook:evt_01hxyz', 'another-call', 60);
+
+    (new ProcessEcourierWebhookJob($webhookCall))->failed(new Error('Listener failed'));
+
+    expect(Cache::get('ecourier:webhook:evt_01hxyz'))->toBe('another-call');
 });
